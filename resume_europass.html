@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alexander Stepanov - Backend Developer CV</title>
+  <style>
+    @page { margin: 2cm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.4;
+      color: #333;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 0;
+    }
+    h1 {
+      font-size: 20pt;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 8px;
+    }
+    h2 {
+      font-size: 12pt;
+      font-weight: 600;
+      margin: 16px 0 8px 0;
+      color: #1e40af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .subtitle { font-size: 11pt; color: #666; margin: 0 0 12px 0; }
+    .contact { margin-bottom: 16px; }
+    .contact span { margin-right: 16px; }
+    .section { margin-bottom: 14px; }
+    .job, .edu-item {
+      margin-bottom: 12px;
+      page-break-inside: avoid;
+    }
+    .job-title { font-weight: 600; font-size: 11pt; }
+    .job-meta { color: #666; font-size: 10pt; margin: 2px 0 4px 0; }
+    .job-desc ul { margin: 4px 0 0 0; padding-left: 18px; }
+    .job-desc li { margin-bottom: 2px; }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 4px; }
+    .skill { background: #f1f5f9; padding: 2px 8px; border-radius: 4px; }
+    .lang-item { margin: 4px 0; }
+  </style>
+</head>
+<body>
+
+<h1>Alexander Stepanov</h1>
+<p class="subtitle">Backend Developer</p>
+
+<div class="contact">
+  <span>📧 alex_step04@mail.ru</span>
+  <span>📱 +7 (977) 611-08-33</span>
+  <span>✈️ Telegram: @reporterw</span><br>
+  <span>📍 Moscow, Russia</span>
+  <span>• Work permit: Russia</span>
+  <span>• Open to business trips</span>
+</div>
+
+<h2>Professional Summary</h2>
+<p>Backend developer with 4+ years of experience in product development and integrations: from architecture design and API development to legacy modernisation and production deployment. Able to quickly navigate complex domains, reduce technical debt and improve system stability. Comfortable in Django stack (DRF, Celery, PostgreSQL) and .NET ecosystem, including event-driven approach (RabbitMQ, Dapr). Values transparency, ownership and engineering discipline: metrics, quality, maintainability.</p>
+
+<h2>Work Experience</h2>
+
+<div class="job section">
+  <div class="job-title">Backend Developer</div>
+  <div class="job-meta">AR-systems, Moscow | March 2025 – Present | IT, System Integration</div>
+  <div class="job-desc">
+    <strong>Responsibilities:</strong>
+    <ul>
+      <li>Developed and maintained services on .NET Framework 4.5.7 and .NET 8</li>
+      <li>Modernisation and refactoring: monolith decomposition, business logic migration, technical debt reduction</li>
+      <li>Implemented asynchronous integrations via RabbitMQ</li>
+      <li>Participated in event-driven microservice architecture design (Dapr, RabbitMQ)</li>
+    </ul>
+    <strong>Key achievements:</strong>
+    <ul>
+      <li>Migrated legacy project from .NET Framework 4.5.7 to .NET 8</li>
+      <li>Rewrote business logic with RabbitMQ message exchange</li>
+      <li>Developed chat-bot in Go (Golang) for project tasks</li>
+    </ul>
+    <strong>Stack:</strong> C#, .NET Framework 4.5.7, .NET 8, RabbitMQ, Dapr, Go
+  </div>
+</div>
+
+<div class="job section">
+  <div class="job-title">Backend Developer</div>
+  <div class="job-meta">ANO "Human Capital Development", Moscow (hcdf.ru) | August 2023 – March 2025 | EdTech/HRTech</div>
+  <div class="job-desc">
+    <strong>Products:</strong> technograd.moscow, dke.moscow, turniketovnet.ru, technopark-kids.ru<br><br>
+    <strong>Responsibilities:</strong>
+    <ul>
+      <li>Designed and developed backend modules for multiple platforms (portals, dashboards, service catalogues, integrations)</li>
+      <li>Developed API and business logic (Django, DRF), reporting and data exports</li>
+      <li>Release support: fixes, enhancements, stability improvements</li>
+    </ul>
+    <strong>Key projects:</strong>
+    <ul>
+      <li><strong>Voluntary Qualification Exam (DKE):</strong> Launched testing portal in 3 months; test constructor and moderation; competency assessment; employer cabinet; Excel reporting (pandas)</li>
+      <li><strong>Technograd:</strong> Backend for online course marketplace; access segmentation; analytics and exports; internal purchase notification bot</li>
+      <li>Telegram WebApp bot, CMS for project landing pages</li>
+    </ul>
+    <strong>Stack:</strong> Python, Django, DRF, PostgreSQL, Celery, pandas, Nginx
+  </div>
+</div>
+
+<div class="job section">
+  <div class="job-title">Backend Developer</div>
+  <div class="job-meta">IThub International College, Moscow | September 2022 – May 2023 | Education</div>
+  <div class="job-desc">
+    <ul>
+      <li>Chat-bot for academic department (Python, aiogram, PostgreSQL, Heroku)</li>
+      <li>Jobs and events platform (Nest.js, Fastify, PostgreSQL, React, Docker Compose)</li>
+    </ul>
+    <strong>Stack:</strong> Python (aiogram), PostgreSQL, Nest.js, Fastify, React, Docker
+  </div>
+</div>
+
+<div class="job section">
+  <div class="job-title">Freelance Developer</div>
+  <div class="job-meta">Self-employed | January 2022 – Present | Various projects</div>
+  <div class="job-desc">
+    <ul>
+      <li><strong>Custom furniture e-shop (Fullstack):</strong> Architecture, Django+PostgreSQL backend, payment gateways, admin, frontend</li>
+      <li><strong>Interior design services website (Fullstack):</strong> Django backend, CMS, SEO, post-release support</li>
+      <li><strong>Building materials e-shop (Fullstack):</strong> Catalogue, CRM integration, order automation, analytics, KPI reporting</li>
+    </ul>
+    <strong>Stack:</strong> Python, Django, PostgreSQL, HTML/CSS/JS, Bootstrap, payment systems, API integrations
+  </div>
+</div>
+
+<h2>Education</h2>
+<div class="edu-item">
+  <div class="job-title">Vocational Education (Secondary specialised)</div>
+  <div class="job-meta">IThub International College of Information Technologies | 2024</div>
+  <div>Information Systems and Programming, Web and Multimedia Development</div>
+</div>
+
+<h2>Skills & Competencies</h2>
+<div class="skills-grid">
+  <span class="skill">Python</span>
+  <span class="skill">Django</span>
+  <span class="skill">Django REST Framework</span>
+  <span class="skill">PostgreSQL</span>
+  <span class="skill">Celery</span>
+  <span class="skill">Redis</span>
+  <span class="skill">C#</span>
+  <span class="skill">.NET Core / .NET 8</span>
+  <span class="skill">RabbitMQ</span>
+  <span class="skill">Docker</span>
+  <span class="skill">Docker Compose</span>
+  <span class="skill">Git</span>
+  <span class="skill">REST API</span>
+  <span class="skill">SQL</span>
+  <span class="skill">Nginx</span>
+  <span class="skill">SQLAlchemy</span>
+  <span class="skill">Go (Golang)</span>
+</div>
+
+<h2>Languages</h2>
+<div class="lang-item"><strong>Russian</strong> – Native</div>
+<div class="lang-item"><strong>English</strong> – B1 (Intermediate)</div>
+
+<h2>Additional Information</h2>
+<p><strong>Preferred work:</strong> Full-time • On-site, remote, or hybrid • Moscow-based<br>
+<strong>Relocation:</strong> Not considering • <strong>Business trips:</strong> Open to</p>
+
+</body>
+</html>
