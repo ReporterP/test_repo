@@ -109,12 +109,48 @@ def _dump(label: str, data: Any) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def extract_req_id(payload: dict) -> int | str | None:
+    """Find the req id inside a /api/req response.
+
+    The server may return it at different paths depending on whether the req
+    was just created, found by subscription, or merged with an existing one.
+    """
+    for key in ("id", "reqId", "req_id"):
+        if payload.get(key):
+            return payload[key]
+    create = payload.get("create")
+    if isinstance(create, dict) and create.get("reqId"):
+        return create["reqId"]
+    for key in ("subscribeFail", "subscribeOk", "subscribe"):
+        v = payload.get(key)
+        if isinstance(v, (int, str)) and v:
+            return v
+    return None
+
+
+def is_terminal_status(payload: dict) -> bool:
+    status = payload.get("status")
+    if status and status != STATUS_LOADING:
+        return True
+    # Some responses carry the status inside a nested req object.
+    req = payload.get("req")
+    if isinstance(req, dict) and req.get("status") and req["status"] != STATUS_LOADING:
+        return True
+    # If taxes have already been delivered, treat as ready even without status.
+    if isinstance(payload.get("taxes"), list) and payload["taxes"]:
+        return True
+    if isinstance(req, dict) and isinstance(req.get("taxes"), list) and req["taxes"]:
+        return True
+    return False
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="avtonalogi.ru /api/req demo client")
     p.add_argument("--type", choices=[REQ_TYPE_INN, REQ_TYPE_UIN], default=REQ_TYPE_INN)
     p.add_argument("--value", required=True, help="INN (12 digits) or UIN (20 digits)")
     p.add_argument("--mail", required=True, help="Email to attach to the subscription")
     p.add_argument("--delete", action="store_true", help="Delete the req after polling")
+    p.add_argument("--poll-interval", type=float, default=3.0)
     p.add_argument("--poll-timeout", type=float, default=120.0)
     args = p.parse_args()
 
@@ -123,13 +159,25 @@ def main() -> int:
     created = client.create_req(args.type, args.value, args.mail)
     _dump("POST /api/req", created)
 
-    req_id = created.get("id") or created.get("req_id")
+    req_id = extract_req_id(created)
     if not req_id:
         print("Server did not return a req id; nothing to poll.", file=sys.stderr)
         return 1
+    print(f"\n-> polling req id {req_id} ...", file=sys.stderr)
 
-    ready = client.wait_until_ready(req_id, timeout=args.poll_timeout)
-    _dump(f"GET /api/req?id={req_id}", ready)
+    deadline = time.monotonic() + args.poll_timeout
+    attempt = 0
+    while True:
+        attempt += 1
+        data = client.get_req(req_id)
+        if is_terminal_status(data):
+            _dump(f"GET /api/req?id={req_id} (attempt {attempt})", data)
+            break
+        if time.monotonic() >= deadline:
+            _dump(f"GET /api/req?id={req_id} (timeout, last response)", data)
+            print("Polling timed out before status left 'loading'.", file=sys.stderr)
+            return 2
+        time.sleep(args.poll_interval)
 
     if args.delete:
         removed = client.delete_req(req_id)
