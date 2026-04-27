@@ -104,9 +104,17 @@ class AvtonalogiClient:
             time.sleep(interval)
 
 
-def _dump(label: str, data: Any) -> None:
-    print(f"\n=== {label} ===")
+def _dump(label: str, data: Any, elapsed: float | None = None) -> None:
+    suffix = f"  [+{elapsed:.2f}s]" if elapsed is not None else ""
+    print(f"\n=== {label}{suffix} ===")
     print(json.dumps(data, ensure_ascii=False, indent=2))
+
+
+def _format_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.2f}s"
+    m, s = divmod(seconds, 60)
+    return f"{int(m)}m {s:.2f}s"
 
 
 def extract_req_id(payload: dict) -> int | str | None:
@@ -155,35 +163,51 @@ def main() -> int:
     args = p.parse_args()
 
     client = AvtonalogiClient()
+    started_at = time.monotonic()
+    started_wall = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"-> started at {started_wall}", file=sys.stderr)
+    exit_code = 0
+    try:
+        created = client.create_req(args.type, args.value, args.mail)
+        _dump("POST /api/req", created, elapsed=time.monotonic() - started_at)
 
-    created = client.create_req(args.type, args.value, args.mail)
-    _dump("POST /api/req", created)
+        req_id = extract_req_id(created)
+        if not req_id:
+            print("Server did not return a req id; nothing to poll.", file=sys.stderr)
+            return 1
+        print(f"\n-> polling req id {req_id} ...", file=sys.stderr)
 
-    req_id = extract_req_id(created)
-    if not req_id:
-        print("Server did not return a req id; nothing to poll.", file=sys.stderr)
-        return 1
-    print(f"\n-> polling req id {req_id} ...", file=sys.stderr)
+        deadline = time.monotonic() + args.poll_timeout
+        attempt = 0
+        while True:
+            attempt += 1
+            data = client.get_req(req_id)
+            elapsed = time.monotonic() - started_at
+            if is_terminal_status(data):
+                _dump(f"GET /api/req?id={req_id} (attempt {attempt})", data, elapsed=elapsed)
+                break
+            if time.monotonic() >= deadline:
+                _dump(f"GET /api/req?id={req_id} (timeout, last response)", data, elapsed=elapsed)
+                print("Polling timed out before status left 'loading'.", file=sys.stderr)
+                exit_code = 2
+                return exit_code
+            time.sleep(args.poll_interval)
 
-    deadline = time.monotonic() + args.poll_timeout
-    attempt = 0
-    while True:
-        attempt += 1
-        data = client.get_req(req_id)
-        if is_terminal_status(data):
-            _dump(f"GET /api/req?id={req_id} (attempt {attempt})", data)
-            break
-        if time.monotonic() >= deadline:
-            _dump(f"GET /api/req?id={req_id} (timeout, last response)", data)
-            print("Polling timed out before status left 'loading'.", file=sys.stderr)
-            return 2
-        time.sleep(args.poll_interval)
+        if args.delete:
+            removed = client.delete_req(req_id)
+            _dump(
+                f"DELETE /api/req?id={req_id}",
+                removed,
+                elapsed=time.monotonic() - started_at,
+            )
 
-    if args.delete:
-        removed = client.delete_req(req_id)
-        _dump(f"DELETE /api/req?id={req_id}", removed)
-
-    return 0
+        return exit_code
+    finally:
+        total = time.monotonic() - started_at
+        print(
+            f"\n-> finished in {_format_duration(total)} (started {started_wall})",
+            file=sys.stderr,
+        )
 
 
 if __name__ == "__main__":
