@@ -89,18 +89,45 @@ class AvtonalogiClient:
     def wait_until_ready(
         self,
         req_id: str | int,
-        interval: float = 3.0,
-        timeout: float = 120.0,
+        interval: float = 8.0,
+        max_wait_attempts: int = 10,
+        max_empty_attempts: int = 5,
+        on_attempt: "callable | None" = None,
     ) -> dict:
-        """Poll GET /api/req until its status leaves `loading`."""
-        deadline = time.monotonic() + timeout
+        """Poll GET /api/req mirroring the front-end loop.
+
+        The front end retries every 8s, allowing up to 10 `wait:true` responses
+        and 5 empty/`findFail` responses before giving up. Returns the final
+        payload as soon as it has neither `wait` nor `findFail` flags.
+        """
+        wait_attempts = 0
+        empty_attempts = 0
+        attempt = 0
         while True:
+            attempt += 1
             data = self.get_req(req_id)
-            status = data.get("status")
-            if status != STATUS_LOADING:
+            kind = classify_find_response(data)
+            if on_attempt:
+                on_attempt(attempt, kind, data)
+
+            if kind == "done":
                 return data
-            if time.monotonic() >= deadline:
-                raise TimeoutError(f"req {req_id} still loading after {timeout}s")
+            if kind == "noParams":
+                raise RuntimeError("server returned 'noParams' for req")
+            if kind == "reload":
+                raise RuntimeError("server requested reload")
+            if kind == "wait":
+                wait_attempts += 1
+                if wait_attempts > 9:
+                    raise TimeoutError(
+                        f"server kept returning wait=true after {wait_attempts} attempts"
+                    )
+            else:  # 'findFail' or 'empty'
+                empty_attempts += 1
+                if empty_attempts > 4:
+                    raise RuntimeError(
+                        f"server kept returning empty/findFail after {empty_attempts} attempts"
+                    )
             time.sleep(interval)
 
 
@@ -136,20 +163,24 @@ def extract_req_id(payload: dict) -> int | str | None:
     return None
 
 
-def is_terminal_status(payload: dict) -> bool:
-    status = payload.get("status")
-    if status and status != STATUS_LOADING:
-        return True
-    # Some responses carry the status inside a nested req object.
-    req = payload.get("req")
-    if isinstance(req, dict) and req.get("status") and req["status"] != STATUS_LOADING:
-        return True
-    # If taxes have already been delivered, treat as ready even without status.
-    if isinstance(payload.get("taxes"), list) and payload["taxes"]:
-        return True
-    if isinstance(req, dict) and isinstance(req.get("taxes"), list) and req["taxes"]:
-        return True
-    return False
+def classify_find_response(payload: Any) -> str:
+    """Reproduce the front-end branching for GET /api/req responses.
+
+    Returns one of: 'noParams', 'reload', 'wait', 'findFail', 'done', 'empty'.
+    """
+    if payload is None or payload == "":
+        return "empty"
+    if payload == "noParams":
+        return "noParams"
+    if not isinstance(payload, dict):
+        return "done"
+    if payload.get("reload"):
+        return "reload"
+    if payload.get("wait"):
+        return "wait"
+    if payload.get("findFail"):
+        return "findFail"
+    return "done"
 
 
 def main() -> int:
@@ -158,8 +189,12 @@ def main() -> int:
     p.add_argument("--value", required=True, help="INN (12 digits) or UIN (20 digits)")
     p.add_argument("--mail", required=True, help="Email to attach to the subscription")
     p.add_argument("--delete", action="store_true", help="Delete the req after polling")
-    p.add_argument("--poll-interval", type=float, default=3.0)
-    p.add_argument("--poll-timeout", type=float, default=120.0)
+    p.add_argument("--poll-interval", type=float, default=8.0,
+                   help="seconds between GET /api/req calls (front-end uses 8)")
+    p.add_argument("--max-wait", type=int, default=10,
+                   help="max consecutive wait=true responses (front-end uses 10)")
+    p.add_argument("--max-empty", type=int, default=5,
+                   help="max consecutive empty/findFail responses (front-end uses 5)")
     args = p.parse_args()
 
     client = AvtonalogiClient()
@@ -177,21 +212,42 @@ def main() -> int:
             return 1
         print(f"\n-> polling req id {req_id} ...", file=sys.stderr)
 
-        deadline = time.monotonic() + args.poll_timeout
-        attempt = 0
-        while True:
-            attempt += 1
-            data = client.get_req(req_id)
+        last_seen: dict[str, Any] = {}
+
+        def trace(attempt: int, kind: str, data: Any) -> None:
             elapsed = time.monotonic() - started_at
-            if is_terminal_status(data):
-                _dump(f"GET /api/req?id={req_id} (attempt {attempt})", data, elapsed=elapsed)
-                break
-            if time.monotonic() >= deadline:
-                _dump(f"GET /api/req?id={req_id} (timeout, last response)", data, elapsed=elapsed)
-                print("Polling timed out before status left 'loading'.", file=sys.stderr)
-                exit_code = 2
-                return exit_code
-            time.sleep(args.poll_interval)
+            print(
+                f"   [attempt {attempt}] kind={kind} (+{elapsed:.2f}s)",
+                file=sys.stderr,
+            )
+            last_seen["attempt"] = attempt
+            last_seen["kind"] = kind
+            last_seen["data"] = data
+
+        try:
+            ready = client.wait_until_ready(
+                req_id,
+                interval=args.poll_interval,
+                max_wait_attempts=args.max_wait,
+                max_empty_attempts=args.max_empty,
+                on_attempt=trace,
+            )
+        except (TimeoutError, RuntimeError) as exc:
+            elapsed = time.monotonic() - started_at
+            _dump(
+                f"GET /api/req?id={req_id} (gave up, last response)",
+                last_seen.get("data"),
+                elapsed=elapsed,
+            )
+            print(f"Polling stopped: {exc}", file=sys.stderr)
+            return 2
+
+        elapsed = time.monotonic() - started_at
+        _dump(
+            f"GET /api/req?id={req_id} (attempt {last_seen.get('attempt')})",
+            ready,
+            elapsed=elapsed,
+        )
 
         if args.delete:
             removed = client.delete_req(req_id)
